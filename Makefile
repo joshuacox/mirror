@@ -8,7 +8,7 @@ help:
 install: usrlocalbin
 
 usrlocalbin:
-	install --mode=0755 mirror /usr/local/bin/mirror
+	install -v --mode=0755 mirror /usr/local/bin/mirror
 
 playbook:
 	ansible-playbook mirror.yaml
