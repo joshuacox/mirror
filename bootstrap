@@ -2,9 +2,8 @@
 TMP_DIR=$(mktemp -d --suffix='.mirror')
 
 cd $TMP_DIR
-git clone https://github.com/joshuacox/mirror.git
+git clone --depth=1 https://github.com/joshuacox/mirror.git
 cd mirror
-git pull
 sudo make install
 cd
 rm -Rf $TMP_DIR
