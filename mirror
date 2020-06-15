@@ -1,0 +1,12 @@
+#!/bin/bash
+SITE_TO_MIRROR=$1
+wget \
+  --mirror \
+  --convert-links \
+  --adjust-extension \
+  --page-requisites \
+  --no-parent \
+  --continue \
+  --random-wait \
+  --progress=dot \
+  $SITE_TO_MIRROR
