@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck & Wget
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck wget
+
+      - name: Run linter
+        run: make lint
+
+      - name: Run tests
+        run: make test
+
+      - name: Test installation and uninstallation
+        run: |
+          make install PREFIX="$HOME/.local"
+          "$HOME/.local/bin/mirror" --version
+          make uninstall PREFIX="$HOME/.local"
+          test ! -f "$HOME/.local/bin/mirror"

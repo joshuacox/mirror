@@ -1,4 +1,17 @@
-- name: dockersupport
+---
+- name: Install mirror utility
   hosts: mirror
+  become: true
   tasks:
-  - script: bootstrap
+    - name: Ensure wget is installed
+      ansible.builtin.package:
+        name: wget
+        state: present
+
+    - name: Install mirror executable
+      ansible.builtin.copy:
+        src: mirror
+        dest: /usr/local/bin/mirror
+        owner: root
+        group: root
+        mode: '0755'

@@ -1,0 +1,19 @@
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+site/node_modules/
+site/.next/
+site/out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS / Editor files
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

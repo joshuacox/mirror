@@ -1,12 +1,176 @@
-#!/bin/bash
-SITE_TO_MIRROR=$1
-wget \
-  --mirror \
-  --convert-links \
-  --adjust-extension \
-  --page-requisites \
-  --no-parent \
-  --continue \
-  --random-wait \
-  --progress=dot \
-  $SITE_TO_MIRROR
+#!/usr/bin/env bash
+#
+# mirror - Wrapper around wget with robust defaults to mirror websites.
+#
+
+set -euo pipefail
+
+VERSION="1.0.0"
+DEFAULT_USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+WAIT_TIME="1"
+USER_AGENT="$DEFAULT_USER_AGENT"
+OUTPUT_DIR=""
+SPAN_HOSTS=0
+DOMAINS=""
+NO_ROBOTS=0
+DEBUG=0
+
+usage() {
+  cat <<EOF
+Usage: mirror [OPTIONS] <URL>... [-- <EXTRA_WGET_FLAGS>...]
+
+Mirror a website using wget with robust, sensible defaults.
+
+Options:
+  -h, --help               Display this help message and exit
+  -v, --version            Display version information and exit
+  -o, --output-dir DIR     Directory where downloaded files should be saved (-P DIR)
+  -w, --wait SECONDS       Wait time between retrievals in seconds (default: 1)
+  -u, --user-agent STRING  Custom User-Agent header to send with requests
+  -s, --span-hosts         Span across hosts (useful for CDNs/external assets)
+  -D, --domains DOMAINS    Comma-separated list of domains to span (implies -s)
+      --no-robots          Ignore robots.txt restrictions (use responsibly)
+      --debug              Print the constructed wget command before executing
+
+Examples:
+  mirror https://example.com
+  mirror -o ./archive -w 2 https://example.com
+  mirror -s -D example.com,cdn.example.com https://example.com
+EOF
+}
+
+version() {
+  echo "mirror version $VERSION"
+}
+
+if ! command -v wget >/dev/null 2>&1; then
+  echo "Error: 'wget' is required but not installed on this system." >&2
+  exit 1
+fi
+
+EXTRA_ARGS=()
+URLS=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -v|--version)
+      version
+      exit 0
+      ;;
+    -o|--output-dir)
+      if [ -z "${2:-}" ]; then
+        echo "Error: $1 requires an argument." >&2
+        exit 1
+      fi
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    -w|--wait)
+      if [ -z "${2:-}" ]; then
+        echo "Error: $1 requires an argument." >&2
+        exit 1
+      fi
+      WAIT_TIME="$2"
+      shift 2
+      ;;
+    -u|--user-agent)
+      if [ -z "${2:-}" ]; then
+        echo "Error: $1 requires an argument." >&2
+        exit 1
+      fi
+      USER_AGENT="$2"
+      shift 2
+      ;;
+    -s|--span-hosts)
+      SPAN_HOSTS=1
+      shift
+      ;;
+    -D|--domains)
+      if [ -z "${2:-}" ]; then
+        echo "Error: $1 requires an argument." >&2
+        exit 1
+      fi
+      SPAN_HOSTS=1
+      DOMAINS="$2"
+      shift 2
+      ;;
+    --no-robots)
+      NO_ROBOTS=1
+      shift
+      ;;
+    --debug)
+      DEBUG=1
+      shift
+      ;;
+    --)
+      shift
+      while [ $# -gt 0 ]; do
+        EXTRA_ARGS+=("$1")
+        shift
+      done
+      break
+      ;;
+    -*)
+      echo "Error: Unknown option: $1" >&2
+      echo "Run 'mirror --help' for usage details." >&2
+      exit 1
+      ;;
+    *)
+      URLS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ ${#URLS[@]} -eq 0 ]; then
+  echo "Error: No URL provided to mirror." >&2
+  echo "" >&2
+  usage >&2
+  exit 1
+fi
+
+WGET_CMD=(
+  wget
+  --mirror
+  --convert-links
+  --adjust-extension
+  --page-requisites
+  --no-parent
+  --continue
+  --random-wait
+  --progress=dot
+  "--wait=${WAIT_TIME}"
+  "--user-agent=${USER_AGENT}"
+)
+
+if [ -n "$OUTPUT_DIR" ]; then
+  WGET_CMD+=("-P" "$OUTPUT_DIR")
+fi
+
+if [ "$SPAN_HOSTS" -eq 1 ]; then
+  WGET_CMD+=("--span-hosts")
+fi
+
+if [ -n "$DOMAINS" ]; then
+  WGET_CMD+=("--domains=${DOMAINS}")
+fi
+
+if [ "$NO_ROBOTS" -eq 1 ]; then
+  WGET_CMD+=("-e" "robots=off")
+fi
+
+if [ ${#EXTRA_ARGS[@]} -gt 0 ]; then
+  WGET_CMD+=("${EXTRA_ARGS[@]}")
+fi
+
+WGET_CMD+=("${URLS[@]}")
+
+if [ "$DEBUG" -eq 1 ]; then
+  echo "Executing: ${WGET_CMD[*]}"
+fi
+
+exec "${WGET_CMD[@]}"
